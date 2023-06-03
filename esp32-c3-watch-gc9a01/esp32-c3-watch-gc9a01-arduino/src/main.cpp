@@ -45,7 +45,8 @@ void lv_example_get_started_1(void)
 void setup()
 {
   Serial.begin(115200); /* prepare for possible serial debug */
-
+  pinMode(5, OUTPUT);
+  digitalWrite(5, HIGH);
   String LVGL_Arduino = "Hello Arduino! ";
   LVGL_Arduino += String('V') + lv_version_major() + "." + lv_version_minor() + "." + lv_version_patch();
 

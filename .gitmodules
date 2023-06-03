@@ -1,0 +1,4 @@
+[submodule "esp32-c3-watch-st7789/esp32-c3-watch-st7789-idf/components/lvgl"]
+	path = esp32-c3-watch-st7789/esp32-c3-watch-st7789-idf/components/lvgl
+	url = https://github.com/lvgl/lvgl.git
+	branch = release/v8.3
