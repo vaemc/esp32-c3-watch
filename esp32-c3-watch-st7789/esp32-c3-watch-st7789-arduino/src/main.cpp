@@ -5,6 +5,7 @@
 #include <TFT_eSPI.h>
 #include "TouchLib.h"
 #include "Wire.h"
+#include "Battery.h"
 
 static const uint16_t screenWidth = 240;
 static const uint16_t screenHeight = 280;
@@ -12,11 +13,16 @@ static const uint16_t screenHeight = 280;
 static lv_disp_draw_buf_t draw_buf;
 static lv_color_t buf[screenWidth * 10];
 
-#define PIN_IIC_SDA 8
-#define PIN_IIC_SCL 9
-TouchLib touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, CTS816S_SLAVE_ADDRESS);
+#define LCD_BL 0
+#define LCD_BUTTON1 1
+
+TouchLib touch(Wire, SDA, SCL, CTS816S_SLAVE_ADDRESS);
 
 TFT_eSPI tft = TFT_eSPI(screenWidth, screenHeight); /* TFT instance */
+
+Battery battery(3.3, 4.2);
+
+lv_obj_t *batteryLabel;
 
 void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
 {
@@ -27,13 +33,8 @@ void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
     TP_Point t = touch.getPoint(0);
 
     data->state = LV_INDEV_STATE_PR;
-    /*Set the coordinates*/
     data->point.x = t.x;
     data->point.y = t.y;
-    Serial.print("Data x ");
-    Serial.println(t.x);
-    Serial.print("Data y ");
-    Serial.println(t.y);
   }
   else
   {
@@ -69,23 +70,86 @@ static void btn_event_cb(lv_event_t *e)
   }
 }
 
-void lv_example_get_started_1(void)
+static void event_handler(lv_event_t *e)
 {
-  lv_obj_t *btn = lv_btn_create(lv_scr_act()); /*Add a button the current screen*/
-  lv_obj_set_size(btn, 120, 50);               /*Set its size*/
-  lv_obj_align(btn, LV_ALIGN_CENTER, 0, 0);
-  lv_obj_add_event_cb(btn, btn_event_cb, LV_EVENT_ALL, NULL); /*Assign a callback to the button*/
+  lv_event_code_t code = lv_event_get_code(e);
 
-  lv_obj_t *label = lv_label_create(btn); /*Add a label to the button*/
-  lv_label_set_text(label, "Button");     /*Set the labels text*/
+  if (code == LV_EVENT_CLICKED)
+  {
+    LV_LOG_USER("Clicked");
+  }
+  else if (code == LV_EVENT_VALUE_CHANGED)
+  {
+    LV_LOG_USER("Toggled");
+  }
+}
+
+void lv_example_btn_1(void)
+{
+
+  batteryLabel = lv_label_create(lv_scr_act());
+  lv_obj_set_style_text_font(batteryLabel, &lv_font_montserrat_20, 0);
+  lv_label_set_text(batteryLabel, "Hello, World!");
+  lv_obj_align(batteryLabel, LV_ALIGN_TOP_MID, 0, 15);
+
+  lv_obj_t *label;
+
+  lv_obj_t *btn1 = lv_btn_create(lv_scr_act());
+  lv_obj_set_size(btn1, 120, 50);
+  lv_obj_add_event_cb(btn1, btn_event_cb, LV_EVENT_ALL, NULL);
+  lv_obj_align(btn1, LV_ALIGN_CENTER, 0, -40);
+
+  label = lv_label_create(btn1);
+  lv_label_set_text(label, "Button");
   lv_obj_center(label);
+
+  lv_obj_t *btn2 = lv_btn_create(lv_scr_act());
+  lv_obj_set_size(btn2, 120, 50);
+  lv_obj_add_event_cb(btn2, event_handler, LV_EVENT_ALL, NULL);
+  lv_obj_align(btn2, LV_ALIGN_CENTER, 0, 40);
+  lv_obj_add_flag(btn2, LV_OBJ_FLAG_CHECKABLE);
+
+  label = lv_label_create(btn2);
+  lv_label_set_text(label, "Toggle");
+  lv_obj_center(label);
+}
+
+void batteryTask(void *pvParameters)
+{
+  while (1)
+  {
+
+    char batteryChar[16];
+    dtostrf(battery.getCurrentLevel(), 4, 2, batteryChar);
+    char prefix[] = "battery: ";
+    strcat(prefix, batteryChar);
+
+    // char formattedNumber[20];
+    // sprintf(formattedNumber, "battery: %.1f", battery.getCurrentLevel());
+
+  
+
+    lv_label_set_text(batteryLabel, prefix);
+
+    delay(1000);
+  }
+}
+
+void buttonTask(void *pvParameters)
+{
+  while (1)
+  {
+    Serial.println(digitalRead(LCD_BUTTON1));
+    delay(500);
+  }
 }
 
 void setup()
 {
   Serial.begin(115200); /* prepare for possible serial debug */
-  pinMode(0, OUTPUT);
-  digitalWrite(0, HIGH);
+  pinMode(LCD_BL, OUTPUT);
+  pinMode(LCD_BUTTON1, INPUT);
+  digitalWrite(LCD_BL, HIGH);
   String LVGL_Arduino = "Hello Arduino! ";
   LVGL_Arduino += String('V') + lv_version_major() + "." + lv_version_minor() + "." + lv_version_patch();
 
@@ -120,9 +184,12 @@ void setup()
   indev_drv.read_cb = my_touchpad_read;
   lv_indev_drv_register(&indev_drv);
 
-  lv_example_get_started_1();
+  lv_example_btn_1();
 
   Serial.println("Setup done");
+
+  xTaskCreate(batteryTask, "batteryTask", 1000, NULL, 1, NULL);
+  // xTaskCreate(buttonTask, "buttonTask", 1000, NULL, 1, NULL);
 }
 
 void loop()

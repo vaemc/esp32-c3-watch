@@ -6,6 +6,10 @@ static const uint16_t screenHeight = 240;
 static lv_disp_draw_buf_t draw_buf;
 static lv_color_t buf[screenWidth * 10];
 
+#define LCD_BL 5
+#define LCD_BUTTON1 3
+#define LCD_BUTTON2 10
+
 TFT_eSPI tft = TFT_eSPI(screenWidth, screenHeight); /* TFT instance */
 
 #if LV_USE_LOG != 0
@@ -45,8 +49,10 @@ void lv_example_get_started_1(void)
 void setup()
 {
   Serial.begin(115200); /* prepare for possible serial debug */
-  pinMode(5, OUTPUT);
-  digitalWrite(5, HIGH);
+  pinMode(LCD_BL, OUTPUT);
+  pinMode(LCD_BUTTON1, INPUT);
+  pinMode(LCD_BUTTON2, INPUT);
+  digitalWrite(LCD_BL, HIGH);
   String LVGL_Arduino = "Hello Arduino! ";
   LVGL_Arduino += String('V') + lv_version_major() + "." + lv_version_minor() + "." + lv_version_patch();
 
