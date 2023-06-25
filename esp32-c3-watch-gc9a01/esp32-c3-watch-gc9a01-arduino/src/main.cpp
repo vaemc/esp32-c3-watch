@@ -1,5 +1,7 @@
 #include <lvgl.h>
 #include <TFT_eSPI.h>
+#include "Battery.h"
+
 static const uint16_t screenWidth = 240;
 static const uint16_t screenHeight = 240;
 
@@ -11,6 +13,10 @@ static lv_color_t buf[screenWidth * 10];
 #define LCD_BUTTON2 10
 
 TFT_eSPI tft = TFT_eSPI(screenWidth, screenHeight); /* TFT instance */
+
+Battery battery(3.3, 4.2);
+
+lv_obj_t *batteryLabel;
 
 #if LV_USE_LOG != 0
 /* Serial debugging */
@@ -43,6 +49,44 @@ void lv_example_get_started_1(void)
 
   lv_obj_t *label = lv_label_create(btn); /*Add a label to the button*/
   lv_label_set_text(label, "Button");     /*Set the labels text*/
+  lv_obj_center(label);
+}
+
+void batteryTask(void *pvParameters)
+{
+  while (1)
+  {
+
+    char batteryChar[16];
+    dtostrf(battery.getCurrentLevel(), 4, 2, batteryChar);
+    char prefix[] = "battery: ";
+    strcat(prefix, batteryChar);
+
+    // char formattedNumber[20];
+    // sprintf(formattedNumber, "battery: %.1f", battery.getCurrentLevel());
+
+    lv_label_set_text(batteryLabel, prefix);
+
+    delay(1000);
+  }
+}
+
+void lv_example_btn_1(void)
+{
+
+  batteryLabel = lv_label_create(lv_scr_act());
+  lv_obj_set_style_text_font(batteryLabel, &lv_font_montserrat_20, 0);
+  lv_label_set_text(batteryLabel, "Hello, World!");
+  lv_obj_align(batteryLabel, LV_ALIGN_TOP_MID, 0, 30);
+
+  lv_obj_t *label;
+
+  lv_obj_t *btn1 = lv_btn_create(lv_scr_act());
+  lv_obj_set_size(btn1, 120, 50);
+  lv_obj_align(btn1, LV_ALIGN_CENTER, 0, 0);
+
+  label = lv_label_create(btn1);
+  lv_label_set_text(label, "Button");
   lv_obj_center(label);
 }
 
@@ -80,8 +124,10 @@ void setup()
   disp_drv.draw_buf = &draw_buf;
   lv_disp_drv_register(&disp_drv);
 
-  lv_example_get_started_1();
+  lv_example_btn_1();
 
+  xTaskCreate(batteryTask, "batteryTask", 1000, NULL, 1, NULL);
+  
   Serial.println("Setup done");
 }
 
